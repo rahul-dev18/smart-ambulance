@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Ambulance Dispatch System | Interdisciplinary Project Demo</title>
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet for live OpenStreetMap integration -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  
+  <!-- External Stylesheet Reference -->
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root {
+      --glass-bg: rgba(8, 15, 30, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.16);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #f43f5e;
+      --success: #34d399;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(244, 63, 94, 0.16), transparent 26%),
+        linear-gradient(135deg, #07111f 0%, #0f172a 45%, #2563eb 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      inset: auto;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      opacity: 0.2;
+      z-index: 0;
+    }
+
+    body::before {
+      top: -80px;
+      left: -100px;
+      background: #38bdf8;
+    }
+
+    body::after {
+      bottom: -100px;
+      right: -80px;
+      background: #f43f5e;
+    }
+
+    header,
+    .panel,
+    .map-card,
+    .route-info-card,
+    .ai-prediction-box,
+    .voice-control-box,
+    .patient-form,
+    .stat-card,
+    .sdg-badge,
+    .emergency-item,
+    .queue-card,
+    .hospital-table-wrapper,
+    .sos-btn,
+    .call-btn,
+    .mic-btn,
+    .gps-btn,
+    .reset-btn {
+      position: relative;
+      z-index: 1;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05));
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 18px 44px rgba(0,0,0,0.24);
+      transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    }
+
+    header:hover,
+    .panel:hover,
+    .map-card:hover,
+    .route-info-card:hover,
+    .ai-prediction-box:hover,
+    .voice-control-box:hover,
+    .patient-form:hover,
+    .stat-card:hover,
+    .sdg-badge:hover,
+    .emergency-item:hover,
+    .queue-card:hover,
+    .hospital-table-wrapper:hover,
+    .sos-btn:hover,
+    .call-btn:hover,
+    .mic-btn:hover,
+    .gps-btn:hover,
+    .reset-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 56px rgba(0,0,0,0.32);
+      border-color: rgba(255,255,255,0.24);
+    }
+
+    .brand-wrap h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: -0.03em;
+      background: linear-gradient(90deg, #ffffff, #8edcff, #60a5fa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 28px rgba(56,189,248,0.18);
+    }
+
+    .card-title {
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: 0.01em;
+    }
+
+    .map-status,
+    .status-chip i.fa-circle {
+      animation: statusPulse 1.6s infinite;
+    }
+
+    .sos-btn {
+      animation: sosPulse 1.6s infinite;
+    }
+
+    .ambulance-icon {
+      animation: ambulancePulse 1.35s infinite;
+    }
+
+    .mic-btn.recording {
+      box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.18);
+    }
+
+    input, textarea, select {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+      color: var(--text-main);
+    }
+
+    .prediction-progress-bar {
+      background: linear-gradient(90deg, #38bdf8, #34d399);
+      box-shadow: 0 0 18px rgba(56,189,248,0.25);
+    }
+
+    @keyframes statusPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.8; }
+    }
+
+    @keyframes sosPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+      50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    }
+
+    @keyframes ambulancePulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.25); }
+      50% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
+    }
+  </style>
+
+  <!-- TOAST CONTAINER -->
+  <style>
+    .toast-container {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      min-width: 260px;
+      max-width: 320px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(8, 15, 30, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+      color: #f8fafc;
+      font-size: 0.92rem;
+      line-height: 1.35;
+      animation: toastIn 0.25s ease;
+    }
+
+    .toast.hide {
+      animation: toastOut 0.25s ease forwards;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-8px); }
+    }
+  </style>
+</head>
+<body style="margin: 0; background: linear-gradient(135deg, #07111f 0%, #0f172a 45%, #2563eb 100%); color: #f8fafc;">
+  <!-- TOP ALERT BANNER -->
+  <div id="alertBanner">
+    🚨 ACTIVE CORRIDOR PREEMPTION: AMBULANCE 1 IN ROUTE. DO NOT ENTER GREEN CORRIDOR SEGMENTS 🚨
+  </div>
+  <!-- HEADER -->
+  <header>
+    <div class="brand-wrap">
+      <div class="brand-mark"><i class="fa-solid fa-truck-medical"></i></div>
+      <div>
+        <p class="eyebrow">AI-Powered Emergency Response</p>
+        <h1>SMART AMBULANCE DISPATCH SYSTEM</h1>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="status-chip"><i class="fa-solid fa-circle"></i> System Online</span>
+      <span class="status-chip"><i class="fa-solid fa-clock"></i> <span id="liveClock">--:--</span></span>
+      <span class="status-chip"><i class="fa-solid fa-siren-on"></i> Emergencies <strong id="headerEmergencyCounter">0</strong></span>
+    </div>
+    <div class="audio-toggle-container">
+      <button class="audio-toggle-btn muted" id="audioToggle" title="Toggle Siren & Alert Audio">
+        <i class="fa-solid fa-volume-xmark"></i>
+      </button>
+    </div>
+  </header>
+  <!-- MAIN DASHBOARD -->
+  <div class="dashboard-container">
+    
+    <!-- LEFT PANEL: EMERGENCY CONTROL -->
+    <div class="panel">
+      <div class="card-title emergency">
+        <i class="fa-solid fa-triangle-exclamation"></i> Emergency Control Center
+      </div>
+      
+      <!-- ACTION BUTTONS -->
+      <div class="sos-button-container">
+        <button class="sos-btn" id="sosBtn">
+          <i class="fa-solid fa-radiation fa-2x fa-spin" style="--fa-animation-duration: 4s;"></i>
+          <span>SOS</span>
+        </button>
+        <button class="call-btn" id="callAmbulanceBtn">
+          <i class="fa-solid fa-ambulance"></i>
+          <span>Call Ambulance</span>
+        </button>
+      </div>
+      <!-- VOICE COMMAND UNIT -->
+      <div class="voice-control-box">
+        <button class="mic-btn" id="micBtn" title="Simulate voice dispatch request">
+          <i class="fa-solid fa-microphone"></i>
+        </button>
+        <div class="voice-status-container">
+          <div class="voice-status" id="voiceStatus">Voice Dispatch Idle</div>
+          <div class="voice-subtext" id="voiceSubtext">Click mic to record patient report</div>
+          <div class="sound-waves" id="soundWaves">
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+          </div>
+        </div>
+      </div>
+      <!-- PATIENT INFO FORM -->
+      <form class="patient-form" id="patientForm" onsubmit="event.preventDefault();">
+        <div class="card-title" style="font-size: 0.9rem; padding-bottom: 5px; border-bottom: none;">
+          <i class="fa-solid fa-id-card"></i> Patient Telemetry Data
+        </div>
+        <div class="form-group">
+          <label for="patientName">Patient Name</label>
+          <input type="text" id="patientName" placeholder="Enter patient name..." value="Amit Kumar">
+        </div>
+        <div class="form-group">
+          <label for="patientConditionText">Condition</label>
+          <input type="text" id="patientConditionText" placeholder="Detected condition" value="Hand Fracture">
+        </div>
+        <div class="form-group">
+          <label for="patientSeverityText">Severity</label>
+          <input type="text" id="patientSeverityText" placeholder="Detected severity" value="Mild">
+        </div>
+        <div class="form-group">
+          <label for="patientConfidenceText">Confidence</label>
+          <input type="text" id="patientConfidenceText" placeholder="Detected confidence" value="95%">
+        </div>
+        <div class="form-group">
+          <label for="patientLocation">Emergency Node</label>
+          <select id="patientLocation">
+            <option value="I1">Ring Rd & MG Rd (I1)</option>
+            <option value="I2">Grand Avenue (I2)</option>
+            <option value="I3">North Highway (I3)</option>
+            <option value="I4">Market Square (I4)</option>
+            <option value="I5" selected>MG Road Center (I5)</option>
+            <option value="I6">East Gate Jn (I6)</option>
+            <option value="I7">South Terminal (I7)</option>
+            <option value="I8">Metro Blvd (I8)</option>
+            <option value="I9">Tech Park Way (I9)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="patientLat">GPS Latitude</label>
+          <input type="text" id="patientLat" placeholder="Auto-filled from GPS" value="12.9716">
+        </div>
+        <div class="form-group">
+          <label for="patientLng">GPS Longitude</label>
+          <input type="text" id="patientLng" placeholder="Auto-filled from GPS" value="77.5946">
+        </div>
+        <div class="form-group">
+          <label for="patientCondition">Condition Severity</label>
+          <select id="patientCondition">
+            <option value="Mild">Mild / Stable</option>
+            <option value="Moderate">Moderate / Serious</option>
+            <option value="Critical" selected>Critical / Life-Threatening</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="patientReport">Patient Report</label>
+          <textarea id="patientReport" rows="4" placeholder="Voice transcript will appear here..."></textarea>
+        </div>
+        <button class="gps-btn" id="gpsBtn" type="button"><i class="fa-solid fa-location-crosshairs"></i> Use Live GPS</button>
+      </form>
+      <!-- ACTIVE EMERGENCIES QUEUE -->
+      <div>
+        <div class="card-title" style="font-size: 0.9rem; padding-bottom: 5px; border-bottom: none;">
+          <i class="fa-solid fa-list-check"></i> Dispatch Logs Queue
+        </div>
+        <div class="emergencies-list" id="emergenciesList">
+          <!-- Sample emergencies preloaded -->
+          <div class="emergency-item">
+            <div class="emergency-header">
+              <span>Case #1042</span>
+              <span class="badge badge-resolved">Resolved</span>
+            </div>
+            <div>Node I7 (Ring Road Cross)</div>
+            <div class="emergency-details">
+              <span>Severity: Moderate</span>
+              <span>15 min ago</span>
+            </div>
+          </div>
+          <div class="emergency-item">
+            <div class="emergency-header">
+              <span>Case #1043</span>
+              <span class="badge badge-resolved">Resolved</span>
+            </div>
+            <div>Node I9 (NH-44 Junction)</div>
+            <div class="emergency-details">
+              <span>Severity: Mild</span>
+              <span>45 min ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- CENTER PANEL: LIVE SIMULATED MAP -->
+    <div class="panel map-panel">
+      <div class="map-card">
+        <div class="map-header">
+          <div>
+            <h3>Live Emergency Route</h3>
+            <p>Vertical dispatch view</p>
+          </div>
+          <div class="map-status">● Live</div>
+        </div>
+        <div id="osmMap" class="osm-map"></div>
+      </div>
+    </div>
+    <!-- RIGHT PANEL: SYSTEM INTELLIGENCE -->
+    <div class="panel">
+      <div class="card-title">
+        <i class="fa-solid fa-brain"></i> System Intelligence
+      </div>
+      <!-- ROUTE INFO CARD -->
+      <div class="route-info-card">
+        <div class="card-title" style="font-size: 0.9rem; padding-bottom: 5px; border: none; margin: 0;">
+          <i class="fa-solid fa-route"></i> AI Route Recommendation
+        </div>
+        <p class="mini-note">Fastest corridor forecast: green-lane activation on the patient path with dynamic rerouting support.</p>
+        <div class="route-grid">
+          <div class="route-stat">
+            <div class="route-stat-label">System ETA</div>
+            <div class="route-stat-value highlight-red" id="infoETA">00:00</div>
+          </div>
+          <div class="route-stat">
+            <div class="route-stat-label">Remaining Distance</div>
+            <div class="route-stat-value" id="infoDistance">0.0 km</div>
+          </div>
+          <div class="route-stat">
+            <div class="route-stat-label">Route Algorithm</div>
+            <div class="route-stat-value highlight-green" style="font-size: 0.95rem;">Dijkstra's / A*</div>
+          </div>
+          <div class="route-stat">
+            <div class="route-stat-label">Signals Preempted</div>
+            <div class="route-stat-value" id="infoSignals">0/0</div>
+          </div>
+        </div>
+      </div>
+      <!-- HOSPITAL BED STATUS TABLE -->
+      <div>
+        <div class="card-title" style="font-size: 0.9rem; padding-bottom: 5px; border-bottom: none;">
+          <i class="fa-solid fa-hospital-user"></i> Hospital Terminal Status
+        </div>
+        <div class="hospital-table-wrapper">
+          <table class="hospital-table">
+            <thead>
+              <tr>
+                <th>Hospital</th>
+                <th>Beds</th>
+                <th>ICU</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="hospital-H1">
+                <td>City General</td>
+                <td>14 / 20</td>
+                <td>3 / 5</td>
+                <td><span class="badge badge-resolved" id="status-H1">STANDBY</span></td>
+              </tr>
+              <tr id="hospital-H2">
+                <td>Metro Health</td>
+                <td>8 / 15</td>
+                <td>1 / 3</td>
+                <td><span class="badge badge-critical" id="status-H2">BUSY ⚠️</span></td>
+              </tr>
+              <tr id="hospital-H3">
+                <td>Apex Trauma</td>
+                <td>19 / 25</td>
+                <td>6 / 8</td>
+                <td><span class="badge badge-mild" id="status-H3">READY</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- AI DISPATCH QUEUE -->
+      <div class="ai-prediction-box queue-panel">
+        <div class="card-title" style="font-size: 0.9rem; padding-bottom: 5px; border: none; margin: 0;">
+          <i class="fa-solid fa-layer-group"></i> AI Dispatch Queue
+        </div>
+        <div class="queue-section-label">Waiting Requests</div>
+        <div class="queue-stack" id="queueWaiting"></div>
+        <div class="queue-section-label">Dispatched Requests</div>
+        <div class="queue-stack" id="queueDispatched"></div>
+        <div class="queue-section-label">Completed Requests</div>
+        <div class="queue-stack" id="queueCompleted"></div>
+      </div>
+      <!-- AI PREDICTIONS & TELEMETRY -->
+      <div class="ai-prediction-box">
+        <div class="card-title" style="font-size: 0.9rem; padding-bottom: 5px; border: none; margin: 0;">
+          <i class="fa-solid fa-chart-line"></i> AI Dynamic Telemetry
+        </div>
+        <div class="ai-metric-row">
+          <div class="ai-metric-label"><i class="fa-solid fa-car-side"></i> Traffic Grid Density</div>
+          <div class="ai-metric-value" id="aiTraffic">High (78%)</div>
+        </div>
+        <div class="ai-metric-row">
+          <div class="ai-metric-label"><i class="fa-solid fa-hourglass-half"></i> Preemption Savings</div>
+          <div class="ai-metric-value" id="aiDelay">4.2 min</div>
+        </div>
+        <div class="ai-metric-row">
+          <div class="ai-metric-label"><i class="fa-solid fa-circle-check"></i> Reroute Confidence</div>
+          <div class="ai-metric-value">97.8%</div>
+        </div>
+        
+        <div class="ai-processing" id="aiProcessingBox">
+          <div class="spinner"></div>
+          <span>AI Engine Optimizing Grid...</span>
+        </div>
+        <div class="prediction-progress-container" id="aiProgressBar">
+          <div class="prediction-progress-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-icon"><i class="fa-solid fa-headset"></i></div>
+      <div class="stat-details">
+        <div class="stat-value" id="statEmergencies">1</div>
+        <div class="stat-label">Active Emergencies</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
+      <div class="stat-details">
+        <div class="stat-value" id="statResponse">4.2m</div>
+        <div class="stat-label">Avg Response Time</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="fa-solid fa-square-h"></i></div>
+      <div class="stat-details">
+        <div class="stat-value" id="statHospitals">3</div>
+        <div class="stat-label">Hospitals Connected</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="fa-solid fa-traffic-light"></i></div>
+      <div class="stat-details">
+        <div class="stat-value" id="statSignals">6</div>
+        <div class="stat-label">Signals Controlled</div>
+      </div>
+    </div>
+  </div>
+  <!-- SDG BADGES SECTION -->
+  <div class="sdg-section">
+    <div class="sdg-badge sdg-3">
+      <div class="sdg-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+      <div class="sdg-text">
+        <span>UNITED NATIONS SDG 3</span>
+        Good Health & Well-being
+      </div>
+    </div>
+    <div class="sdg-badge sdg-11">
+      <div class="sdg-icon"><i class="fa-solid fa-city"></i></div>
+      <div class="sdg-text">
+        <span>UNITED NATIONS SDG 11</span>
+        Sustainable Cities & Communities
+      </div>
+    </div>
+  </div>
+  <!-- RESET BUTTON -->
+  <div class="reset-container">
+    <button class="reset-btn" id="resetBtn">
+      <i class="fa-solid fa-rotate-left"></i> Reset Simulation
+    </button>
+  </div>
+  <!-- FOOTER -->
+  <footer>
+    <p>Developed by: <strong>Rahul Raj | Gaurang Kumar | Prashant Bhushan | Rani Patil</strong></p>
+    <p class="guide-text">Project Guide: DR. ANAND R | CSE 2025-26</p>
+  </footer>
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+  <!-- External Script Logic Reference -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const mapDiv = document.getElementById('osmMap');
+      const liveClock = document.getElementById('liveClock');
+      const headerEmergencyCounter = document.getElementById('headerEmergencyCounter');
+      const emergenciesList = document.getElementById('emergenciesList');
+      const statEmergencies = document.getElementById('statEmergencies');
+      const queueWaiting = document.getElementById('queueWaiting');
+      const queueDispatched = document.getElementById('queueDispatched');
+      const queueCompleted = document.getElementById('queueCompleted');
+
+      const patientName = document.getElementById('patientName');
+      const patientConditionText = document.getElementById('patientConditionText');
+      const patientSeverityText = document.getElementById('patientSeverityText');
+      const patientConfidenceText = document.getElementById('patientConfidenceText');
+      const patientLocation = document.getElementById('patientLocation');
+      const patientLat = document.getElementById('patientLat');
+      const patientLng = document.getElementById('patientLng');
+      const patientCondition = document.getElementById('patientCondition');
+      const patientReport = document.getElementById('patientReport');
+
+      const sosBtn = document.getElementById('sosBtn');
+      const callBtn = document.getElementById('callAmbulanceBtn');
+      const gpsBtn = document.getElementById('gpsBtn');
+      const micBtn = document.getElementById('micBtn');
+      const voiceStatus = document.getElementById('voiceStatus');
+      const voiceSubtext = document.getElementById('voiceSubtext');
+      const soundWaves = document.getElementById('soundWaves');
+
+      const infoETA = document.getElementById('infoETA');
+      const infoDistance = document.getElementById('infoDistance');
+      const infoSignals = document.getElementById('infoSignals');
+      const aiTraffic = document.getElementById('aiTraffic');
+      const aiDelay = document.getElementById('aiDelay');
+      const aiProcessingBox = document.getElementById('aiProcessingBox');
+      const aiProgressBar = document.getElementById('aiProgressBar');
+      const progressFill = aiProgressBar ? aiProgressBar.querySelector('.prediction-progress-bar') : null;
+
+      if (!mapDiv || typeof L === 'undefined') {
+        console.error('Leaflet map not available');
+        return;
+      }
+
+      const depot = [12.9605, 77.5820];
+      const hospitals = [
+        { name: 'City General', coords: [12.9754, 77.5966], color: '#38bdf8', icon: 'C' },
+        { name: 'Metro Health', coords: [12.9832, 77.6103], color: '#f43f5e', icon: 'M' },
+        { name: 'Apex Trauma', coords: [12.9678, 77.6210], color: '#22c55e', icon: 'A' }
+      ];
+
+      const nodeCoords = {
+        I1: [12.9650, 77.5850],
+        I2: [12.9690, 77.5910],
+        I3: [12.9730, 77.5980],
+        I4: [12.9700, 77.6050],
+        I5: [12.9716, 77.5946],
+        I6: [12.9770, 77.6000],
+        I7: [12.9680, 77.6200],
+        I8: [12.9800, 77.6120],
+        I9: [12.9820, 77.6220]
+      };
+
+      let selectedHospital = hospitals[0];
+      let currentPos = [12.9716, 77.5946];
+      let map;
+      let ambulanceMarker;
+      let patientMarker;
+      let routeLine;
+      let moveTimer = null;
+      let animationId = 0;
+      let isAnimating = false;
+      let queueState = { waiting: [], dispatched: [], completed: [] };
+      let routeDashOffset = 0;
+      let routeAnimationFrame = null;
+      let pendingPatientLocation = null;
+      
+      function getBestHospital() {
+        const statusMap = {
+          H1: document.getElementById('status-H1')?.textContent || '',
+          H2: document.getElementById('status-H2')?.textContent || '',
+          H3: document.getElementById('status-H3')?.textContent || ''
+        };
+        
+        const preferred = hospitals.filter((h) => {
+          const id = h.name === 'City General' ? 'H1' : h.name === 'Metro Health' ? 'H2' : 'H3';
+          const status = statusMap[id] || '';
+          return !status.toUpperCase().includes('BUSY');
+        });
+        
+        return preferred[0] || selectedHospital || hospitals[0];
+      }
+
+      function startRouteLinePulse() {
+        if (!routeLine || typeof routeLine.setStyle !== 'function') return;
+        routeLine.setStyle({
+          color: '#38bdf8',
+          weight: 6,
+          opacity: 0.95,
+          dashArray: '8 8',
+          dashOffset: 0
+        });
+      }
+
+      function animateCount(element, targetValue, duration = 500) {
+        if (!element) return;
+        
+        const startValue = parseInt(element.textContent, 10) || 0;
+        const endValue = parseInt(targetValue, 10) || 0;
+        const startTime = performance.now();
+        
+        function tick(now) {
+          const progress = Math.min(1, (now - startTime) / duration);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const value = Math.round(startValue + (endValue - startValue) * eased);
+          element.textContent = value;
+          
+          if (progress < 1) {
+            requestAnimationFrame(tick);
+          }
+        }
+        
+        requestAnimationFrame(tick);
+      }
+
+      function updateClock() {
+        if (liveClock) liveClock.textContent = new Date().toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+      }
+
+      function setVoiceState(status, subtext) {
+        if (voiceStatus) voiceStatus.textContent = status;
+        if (voiceSubtext) voiceSubtext.textContent = subtext;
+      }
+
+      function setRecordingState(isRecording) {
+        if (micBtn) micBtn.classList.toggle('recording', isRecording);
+        if (soundWaves) soundWaves.classList.toggle('active', isRecording);
+      }
+
+      function setMapStatus(text) {
+        const el = document.querySelector('.map-status');
+        if (el) el.textContent = text;
+      }
+
+      function showToast(message) {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.classList.add('hide');
+          setTimeout(() => toast.remove(), 250);
+        }, 3000);
+      }
+
+      function createIcon(label, color, size = 34) {
+        return L.divIcon({
+          html: `<div style="background:${color};color:#fff;width:${size}px;height:${size}px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-weight:700;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">${label}</div>`,
+          className: '',
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2]
+        });
+      }
+
+      function haversineDistance(a, b) {
+        const toRad = (value) => (value * Math.PI) / 180;
+        const R = 6371;
+        const dLat = toRad(b[0] - a[0]);
+        const dLng = toRad(b[1] - a[1]);
+        const lat1 = toRad(a[0]);
+        const lat2 = toRad(b[0]);
+        const sinDLat = Math.sin(dLat / 2);
+        const sinDLng = Math.sin(dLng / 2);
+        const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+        return 2 * R * Math.asin(Math.sqrt(h));
+      }
+
+      function updateRouteRecommendation(startPoint = depot, endPoint = currentPos) {
+        const totalDistance = haversineDistance(startPoint, endPoint);
+        const trafficPercent = Math.min(95, Math.max(55, Math.round(totalDistance * 10 + 40)));
+        const etaSeconds = Math.max(0, Math.round(totalDistance * 55)); // allow ETA to reach 00:00
+        const etaMinutes = Math.floor(etaSeconds / 60);
+        const etaRemSeconds = etaSeconds % 60;
+
+        if (infoETA) infoETA.textContent = `${String(etaMinutes).padStart(2, '0')}:${String(etaRemSeconds).padStart(2, '0')}`;
+        if (infoDistance) infoDistance.textContent = `${totalDistance.toFixed(1)} km`;
+        if (infoSignals) infoSignals.textContent = `${Math.max(3, Math.min(8, Math.round(totalDistance * 1.4)))}/${Math.max(2, Math.round(totalDistance * 0.8)) + 1}`;
+
+        if (aiTraffic) {
+          aiTraffic.textContent = trafficPercent > 80 ? `High (${trafficPercent}%)` : trafficPercent > 65 ? `Medium (${trafficPercent}%)` : `Low (${trafficPercent}%)`;
+        }
+
+        if (aiDelay) aiDelay.textContent = `${Math.max(1.5, (etaSeconds / 120).toFixed(1))} min`;
+
+        if (aiProcessingBox) aiProcessingBox.innerHTML = '<div class="spinner"></div><span>AI engine optimizing route...</span>';
+
+        if (progressFill) progressFill.style.width = `${Math.min(100, 40 + trafficPercent / 2)}%`;
+      }
+
+      function interpolate(start, end, steps = 70) {
+        const points = [];
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          points.push([
+            start[0] + (end[0] - start[0]) * t,
+            start[1] + (end[1] - start[1]) * t
+          ]);
+        }
+        return points;
+      }
+
+      function stopAnimation() {
+        if (moveTimer) clearInterval(moveTimer);
+        moveTimer = null;
+        isAnimating = false;
+      }
+
+      function updateLocationFields(lat, lng, label) {
+        if (patientLat) patientLat.value = lat.toFixed(6);
+        if (patientLng) patientLng.value = lng.toFixed(6);
+        if (patientLocation) {
+          const value = label || 'Custom Location';
+          const options = Array.from(patientLocation.options).map(o => o.value);
+          if (options.includes(value)) {
+            patientLocation.value = value;
+          } else {
+            const matched = Array.from(patientLocation.options).find(o =>
+              o.textContent.toLowerCase().includes(value.toLowerCase()) ||
+              value.toLowerCase().includes(o.textContent.toLowerCase())
+            );
+            if (matched) patientLocation.value = matched.value;
+          }
+        }
+      }
+
+      function renderQueue() {
+        const card = (item, status) => `
+          <div class="queue-card">
+            <div class="queue-title">
+              <span>${item.id}</span>
+              <span class="queue-badge">${status}</span>
+            </div>
+            <div class="queue-meta">${item.label}</div>
+            <div class="queue-meta">${item.time}</div>
+          </div>
+        `;
+
+        if (queueWaiting) {
+          queueWaiting.innerHTML = queueState.waiting.length
+            ? queueState.waiting.map(item => card(item, 'WAITING')).join('')
+            : '<div class="queue-empty">No waiting requests</div>';
+        }
+
+        if (queueDispatched) {
+          queueDispatched.innerHTML = queueState.dispatched.length
+            ? queueState.dispatched.map(item => card(item, 'DISPATCHED')).join('')
+            : '<div class="queue-empty">No dispatched requests</div>';
+        }
+
+        if (queueCompleted) {
+          queueCompleted.innerHTML = queueState.completed.length
+            ? queueState.completed.map(item => card(item, 'COMPLETED')).join('')
+            : '<div class="queue-empty">No completed requests</div>';
+        }
+      }
+
+      function moveToDispatched(id) {
+        const item = queueState.waiting.find(x => x.id === id);
+        if (!item) return;
+        queueState.waiting = queueState.waiting.filter(x => x.id !== id);
+        queueState.dispatched.push(item);
+        renderQueue();
+        setTimeout(() => moveToCompleted(id), 2200);
+      }
+
+      function moveToCompleted(id) {
+        const item = queueState.dispatched.find(x => x.id === id);
+        if (!item) return;
+        queueState.dispatched = queueState.dispatched.filter(x => x.id !== id);
+        queueState.completed.push(item);
+        renderQueue();
+      }
+
+      function addQueueItem(lat, lng) {
+        const id = `CASE-${Date.now().toString().slice(-4)}`;
+        const labelText = patientLocation && patientLocation.value ? patientLocation.value : 'Map Point';
+        queueState.waiting.push({
+          id,
+          label: `${labelText} • ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          time: new Date().toLocaleTimeString('en-IN')
+        });
+        renderQueue();
+        setTimeout(() => moveToDispatched(id), 1800);
+      }
+
+      function updateDispatchUI() {
+        const totalCount = queueState.waiting.length + queueState.dispatched.length + queueState.completed.length;
+        const activeCount = queueState.waiting.length + queueState.dispatched.length;
+
+        if (headerEmergencyCounter) animateCount(headerEmergencyCounter, totalCount);
+        if (statEmergencies) animateCount(statEmergencies, activeCount);
+
+        if (emergenciesList) {
+          emergenciesList.innerHTML = `
+            <div class="emergency-item">
+              <div class="emergency-header">
+                <span>Case #${Date.now().toString().slice(-4)}</span>
+                <span class="badge badge-critical">ACTIVE</span>
+              </div>
+              <div>${patientLocation ? patientLocation.value : 'Emergency Node'}</div>
+              <div class="emergency-details">
+                <span>Severity: ${patientCondition ? patientCondition.value : 'Critical'}</span>
+                <span>Now</span>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      function resetSimulation() {
+        stopAnimation();
+        pendingPatientLocation = null;
+        currentPos = [12.9716, 77.5946];
+        updateLocationFields(currentPos[0], currentPos[1], 'I5');
+        patientMarker.setLatLng(currentPos);
+        ambulanceMarker.setLatLng(depot);
+        routeLine.setLatLngs([depot, currentPos]);
+        setMapStatus('● Waiting for location');
+        if (patientCondition) patientCondition.value = 'Critical';
+        if (patientConditionText) patientConditionText.value = 'Stable';
+        if (patientSeverityText) patientSeverityText.value = 'Mild';
+        if (patientConfidenceText) patientConfidenceText.value = '95%';
+        if (patientReport) patientReport.value = '';
+        setVoiceState('Voice Dispatch Idle', 'Click the mic and speak the condition/location.');
+        setRecordingState(false);
+        map.setView(depot, 13);
+        updateRouteRecommendation();
+      }
+
+      function animateRoute(start, end, statusText, toastText, onComplete, onTick = null) {
+        const sessionId = ++animationId;
+        stopAnimation();
+        isAnimating = true;
+        routeLine.setLatLngs([start, end]);
+        setMapStatus(statusText);
+        showToast(toastText);
+
+        const legDistanceKm = haversineDistance(start, end);
+        const etaSeconds = Math.max(60, Math.round(legDistanceKm * 55));
+        const etaMinutes = Math.max(1, Math.round(etaSeconds / 60));
+
+        // Keep both legs visually consistent and watchable
+        const durationMs = Math.min(20000, Math.max(15000, etaMinutes * 1000));
+
+        const totalSteps = 90;
+        const path = interpolate(start, end, totalSteps);
+        const stepIntervalMs = Math.max(50, Math.round(durationMs / totalSteps));
+        let index = 0;
+
+        moveTimer = setInterval(() => {
+          if (!isAnimating || sessionId !== animationId) return;
+
+          if (index >= path.length) {
+            stopAnimation();
+            ambulanceMarker.setLatLng(end);
+            if (onComplete) onComplete();
+            return;
+          }
+
+          const currentPoint = path[index];
+          ambulanceMarker.setLatLng(currentPoint);
+          if (onTick) onTick(currentPoint);
+          index++;
+        }, stepIntervalMs);
+
+        map.flyTo(end, 14, { duration: 0.8 });
+        updateRouteRecommendation();
+      }
+
+      function dispatchEmergency(lat, lng, label = 'Selected Location', source = 'call') {
+        selectedHospital = getBestHospital();
+        currentPos = [lat, lng];
+        updateLocationFields(lat, lng, label);
+
+        if (patientName) patientName.value = patientName.value || 'Amit Kumar';
+        if (patientConditionText) patientConditionText.value = source === 'voice' ? 'Voice Dispatch' : 'Critical / Life-Threatening';
+        if (patientSeverityText) patientSeverityText.value = 'Critical';
+        if (patientConfidenceText) patientConfidenceText.value = '97%';
+        if (patientCondition) patientCondition.value = 'Critical';
+
+        updateDispatchUI();
+        addQueueItem(lat, lng);
+
+        const areaLabel = label && label !== 'Selected Location' && label !== 'Current Location'
+          ? label
+          : `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+
+        showToast(`🚨 Ambulance Called at ${areaLabel}`);
+
+        patientMarker.setLatLng(currentPos);
+        animateRoute(depot, currentPos, '● Ambulance moving', '🚑 Ambulance En Route to Patient', () => {
+          routeLine.setLatLngs([currentPos, selectedHospital.coords]);
+          showToast('🧍 Patient Picked Up — Heading to Hospital');
+          animateRoute(currentPos, selectedHospital.coords, '● En Route to Hospital', `🏥 En Route to ${selectedHospital.name}`, () => {
+            setMapStatus('● Patient Admitted');
+            updateRouteRecommendation(selectedHospital.coords, selectedHospital.coords);
+            showToast(`✅ Patient Admitted to ${selectedHospital.name}`);
+          }, (currentPoint) => {
+            updateRouteRecommendation(currentPoint, selectedHospital.coords);
+          });
+        }, (currentPoint) => {
+          updateRouteRecommendation(currentPoint, currentPos);
+        });
+      }
+
+      function setPatientLocation(lat, lng, label = 'Map Click Location') {
+        pendingPatientLocation = [lat, lng];
+        currentPos = [lat, lng];
+        updateLocationFields(lat, lng, label);
+
+        if (patientMarker) {
+          patientMarker.setLatLng(currentPos);
+        }
+
+        if (routeLine) {
+          routeLine.setLatLngs([depot, currentPos]);
+        }
+
+        setMapStatus('● Patient location selected');
+        showToast(`📍 Patient location set at ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      }
+
+      function handleMapClick(e) {
+        if (!e || !e.latlng) return;
+        setPatientLocation(e.latlng.lat, e.latlng.lng, 'Map Click Location');
+      }
+
+      function parseVoiceText(text) {
+        const t = text.toLowerCase();
+
+        if (t.includes('heart attack')) return { condition: 'Heart Attack', severity: 'Critical', confidence: '98%' };
+        if (t.includes('stroke')) return { condition: 'Stroke', severity: 'Critical', confidence: '97%' };
+        if (t.includes('asthma')) return { condition: 'Asthma Attack', severity: 'Moderate', confidence: '94%' };
+        if (t.includes('seizure')) return { condition: 'Seizure', severity: 'Moderate', confidence: '95%' };
+        if (t.includes('fracture')) return { condition: 'Fracture', severity: 'Mild', confidence: '95%' };
+        if (t.includes('burn')) return { condition: 'Burn', severity: 'Moderate', confidence: '93%' };
+        if (t.includes('allergic')) return { condition: 'Allergic Reaction', severity: 'Critical', confidence: '96%' };
+        if (t.includes('bleeding')) return { condition: 'Severe Bleeding', severity: 'Critical', confidence: '95%' };
+
+        return { condition: 'General Emergency', severity: 'Moderate', confidence: '90%' };
+      }
+
+      function resolveVoiceLocation(text) {
+        const t = text.toLowerCase();
+
+        for (const [key, coords] of Object.entries(nodeCoords)) {
+          if (t.includes(key.toLowerCase()) || t.includes(key.replace('i', 'i ').toLowerCase())) {
+            return { key, coords };
+          }
+        }
+
+        if (t.includes('mg road') || t.includes('mg road center')) return { key: 'I5', coords: nodeCoords.I5 };
+        if (t.includes('metro boulevard')) return { key: 'I8', coords: nodeCoords.I8 };
+        if (t.includes('tech park')) return { key: 'I9', coords: nodeCoords.I9 };
+
+        return null;
+      }
+
+      function startVoiceDispatch() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+          setVoiceState('Voice Not Supported', 'Use Chrome/Edge on localhost or HTTPS');
+          if (patientReport) patientReport.value = 'Speech recognition is not supported in this browser.';
+          return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+          setRecordingState(true);
+          setVoiceState('Recording...', 'Speak clearly. Example: "heart attack at I5"');
+        };
+
+        recognition.onresult = (event) => {
+          const transcript = Array.from(event.results)
+            .map(result => result[0].transcript)
+            .join(' ')
+            .trim();
+
+          if (transcript) {
+            if (patientReport) patientReport.value = transcript;
+
+            const parsed = parseVoiceText(transcript);
+            if (patientConditionText) patientConditionText.value = parsed.condition;
+            if (patientSeverityText) patientSeverityText.value = parsed.severity;
+            if (patientConfidenceText) patientConfidenceText.value = parsed.confidence;
+            if (patientCondition) patientCondition.value = parsed.severity === 'Critical' ? 'Critical' : parsed.severity === 'Moderate' ? 'Moderate' : 'Mild';
+
+            const resolved = resolveVoiceLocation(transcript);
+            if (resolved) {
+              if (patientLocation) patientLocation.value = resolved.key;
+              dispatchEmergency(resolved.coords[0], resolved.coords[1], resolved.key, 'voice');
+            } else {
+              dispatchEmergency(currentPos[0], currentPos[1], patientLocation?.value || 'Current Location', 'voice');
+            }
+
+            setVoiceState('Voice Captured', transcript);
+          } else {
+            setVoiceState('No Speech Detected', 'Please try again.');
+          }
+        };
+
+        recognition.onerror = () => {
+          setRecordingState(false);
+          setVoiceState('Voice Error', 'Please try again or use the buttons.');
+        };
+
+        recognition.onend = () => {
+          setRecordingState(false);
+          setVoiceState('Voice Dispatch Idle', 'Ready for another voice command.');
+        };
+
+        recognition.start();
+      }
+
+      try {
+        if (mapDiv) {
+          mapDiv.style.width = '100%';
+          mapDiv.style.height = '420px';
+          mapDiv.style.minHeight = '420px';
+        }
+
+        map = L.map('osmMap', {
+          zoomControl: true,
+          attributionControl: true
+        }).setView(depot, 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+      } catch (err) {
+        console.error('Map initialization failed:', err);
+      }
+
+      if (!map) {
+        console.error('Leaflet map instance not created');
+        return;
+      }
+
+      hospitals.forEach((h) => {
+        const marker = L.marker(h.coords, { icon: createIcon(h.icon, h.color) })
+          .addTo(map)
+          .bindPopup(`<strong>${h.name}</strong><br>Hospital Terminal`);
+
+        marker.on('click', () => {
+          selectedHospital = h;
+          updateRouteRecommendation();
+        });
+      });
+
+      patientMarker = L.marker(currentPos, { icon: createIcon('P', '#ef4444') })
+        .addTo(map)
+        .bindPopup('Emergency Location');
+
+      ambulanceMarker = L.marker(depot, {
+        icon: L.divIcon({
+          html: '<div class="ambulance-icon">🚑</div>',
+          className: '',
+          iconSize: [38, 38],
+          iconAnchor: [19, 19]
+        })
+      }).addTo(map).bindPopup('Ambulance');
+
+      routeLine = L.polyline([depot, currentPos], {
+        color: '#38bdf8',
+        weight: 6,
+        opacity: 0.95,
+        dashArray: '8 8'
+      }).addTo(map);
+
+      map.on('click', handleMapClick);
+
+      if (typeof startRouteLinePulse === 'function') {
+        startRouteLinePulse();
+      }
+
+      setTimeout(() => map.invalidateSize(), 500);
+      window.addEventListener('resize', () => map.invalidateSize());
+
+      updateClock();
+      setInterval(updateClock, 1000);
+      renderQueue();
+      updateRouteRecommendation();
+      resetSimulation();
+
+      if (gpsBtn) {
+        gpsBtn.addEventListener('click', () => {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => dispatchEmergency(pos.coords.latitude, pos.coords.longitude, 'Live GPS', 'gps'),
+              () => dispatchEmergency(12.9716, 77.5946, 'Live GPS', 'gps'),
+              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+          } else {
+            dispatchEmergency(12.9716, 77.5946, 'Live GPS', 'gps');
+          }
+        });
+      }
+
+      if (sosBtn) {
+        sosBtn.addEventListener('click', () => {
+          const lat = parseFloat(patientLat?.value || currentPos[0]);
+          const lng = parseFloat(patientLng?.value || currentPos[1]);
+          dispatchEmergency(lat, lng, patientLocation?.value || 'Current Location', 'sos');
+        });
+      }
+
+      if (callBtn) {
+        callBtn.addEventListener('click', () => {
+          if (!pendingPatientLocation) {
+            showToast('Please select a patient location on the map first.');
+            return;
+          }
+
+          const lat = pendingPatientLocation[0];
+          const lng = pendingPatientLocation[1];
+          dispatchEmergency(lat, lng, patientLocation?.value || 'Current Location', 'call');
+        });
+      }
+
+      if (micBtn) {
+        micBtn.addEventListener('click', startVoiceDispatch);
+      }
+
+      const resetBtn = document.getElementById('resetBtn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', resetSimulation);
+      }
+
+      setTimeout(() => map.invalidateSize(), 300);
+    });
+  </script>
+  
+<!-- filepath: c:\Users\GANESH KUMAR\OneDrive\Desktop\smart-ambulance\index.html -->
+<!-- <script src="app.js"></script> -->
+</body>
+</html>
